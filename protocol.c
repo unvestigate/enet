@@ -1216,8 +1216,14 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
        if (receivedLength == 0)
          return 0;
 
-       host -> receivedData = host -> packetData [0];
-       host -> receivedDataLength = receivedLength;
+       // Detect NAT punch through packets.
+	   if(enet_basis_detect_nat_punch_through_packet(host, receivedLength))
+	   {
+		 return 0;
+	   }
+
+	   host -> receivedData = host -> packetData [0];
+	   host -> receivedDataLength = receivedLength;
       
        host -> totalReceivedData += receivedLength;
        host -> totalReceivedPackets ++;

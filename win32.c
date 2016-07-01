@@ -326,6 +326,35 @@ enet_socket_send (ENetSocket socket,
     return (int) sentLength;
 }
 
+// Basis specific function:
+
+ENetBuffer natPunchThroughBuffer[1];
+
+int 
+enet_basis_send_nat_punch(ENetHost * host, const ENetAddress * address)
+{
+	struct sockaddr_in sin;
+	DWORD sentLength;
+
+	memset(&sin, 0, sizeof (struct sockaddr_in));
+	sin.sin_family = AF_INET;
+	sin.sin_port = ENET_HOST_TO_NET_16 (address -> port);
+	sin.sin_addr.s_addr = address -> host;
+
+	natPunchThroughBuffer[0].data = NAT_PUNCH_THROUGH_MESSAGE;
+	natPunchThroughBuffer[0].dataLength = strlen(NAT_PUNCH_THROUGH_MESSAGE);
+
+	if (WSASendTo(host->socket, (LPWSABUF)natPunchThroughBuffer, (DWORD)1, &sentLength, 0, (struct sockaddr *) & sin, sizeof (struct sockaddr_in), NULL, NULL) == SOCKET_ERROR)
+	{
+		if (WSAGetLastError () == WSAEWOULDBLOCK)
+			return 0;
+
+		return -1;
+	}
+
+	return (int) sentLength;
+}
+
 int
 enet_socket_receive (ENetSocket socket,
                      ENetAddress * address,

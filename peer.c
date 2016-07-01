@@ -1001,4 +1001,116 @@ notifyError:
     return NULL;
 }
 
+// Basis specific functions:
+
+int enet_basis_has_received_punch_from(ENetHost * host, const ENetAddress * address)
+{
+	ENetNatAddressNode* node = host->firstNatAddressNode;
+
+	// See if the address exists in the list. If it does, remove it and return 1, otherwise return 0.
+
+	while(node)
+	{
+		if(node->address.host == address->host && node->address.port == address->port)
+		{
+			if(node->prev)
+			{
+				node->prev->next = node->next;
+			}
+			else
+			{
+				host->firstNatAddressNode = node->next;
+			}
+
+			if(node->next)
+			{
+				node->next->prev = node->prev;
+			}
+
+			enet_free(node);
+			return 1;
+		}
+
+		node = node->next;
+	}
+
+	return 0;
+}
+
+int enet_basis_detect_nat_punch_through_packet(ENetHost * host, size_t receivedLength)
+{
+	size_t punchLen = strlen(NAT_PUNCH_THROUGH_MESSAGE);
+	unsigned char buffer[32];
+
+	if(receivedLength < punchLen || receivedLength >= 32)
+	{
+		return 0; // Too short/long to be a Basis NAT punch through packet.
+	}
+
+	strncpy(buffer, host->packetData[0], sizeof(unsigned char) * punchLen);
+	buffer[punchLen] = '\0';
+
+	if(strcmp(buffer, NAT_PUNCH_THROUGH_MESSAGE) == 0)
+	{
+		ENetNatAddressNode* newNode = NULL;
+		ENetNatAddressNode* prevNode = NULL;
+
+		if(host->firstNatAddressNode)
+		{
+			// Nodes created. Find the last one.
+			prevNode = host->firstNatAddressNode;
+
+			if(prevNode->address.host == host->receivedAddress.host && 
+				prevNode->address.port == host->receivedAddress.port)
+			{
+				return 1; // This NAT punch through address was already registered, just return.
+			}
+
+			while(prevNode->next)
+			{
+				prevNode = prevNode->next;
+
+				if(prevNode->address.host == host->receivedAddress.host && 
+					prevNode->address.port == host->receivedAddress.port)
+				{
+					return 1; // This NAT punch through address was already registered, just return.
+				}
+			}
+
+			newNode = (ENetNatAddressNode *) enet_malloc(sizeof(ENetNatAddressNode));
+			prevNode->next = newNode;
+		}
+		else
+		{
+			// No nodes created, create the first one.
+			newNode = (ENetNatAddressNode *) enet_malloc(sizeof(ENetNatAddressNode));
+			host->firstNatAddressNode = newNode;
+		}
+
+		newNode->prev = prevNode;
+		newNode->next = NULL;
+		newNode->address = host->receivedAddress;
+
+		return 1; // NAT punch through detected.
+	}
+
+	return 0; // Normal ENet packet.
+}
+
+// Clear the list of NAT punch through nodes from the given host.
+void enet_basis_clear_nat_punch_nodes(ENetHost * host)
+{
+	ENetNatAddressNode* natAddressNode = host->firstNatAddressNode;
+	ENetNatAddressNode* tempAddressNode = NULL;
+
+	while(natAddressNode)
+	{
+		tempAddressNode = natAddressNode;
+		natAddressNode = natAddressNode->next;
+		enet_free(tempAddressNode);
+	}
+
+	host->firstNatAddressNode = NULL;
+}
+
 /** @} */

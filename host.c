@@ -110,6 +110,8 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
 
     host -> intercept = NULL;
 
+	host -> firstNatAddressNode = NULL;
+
     enet_list_clear (& host -> dispatchQueue);
 
     for (currentPeer = host -> peers;
@@ -153,6 +155,8 @@ enet_host_destroy (ENetHost * host)
     {
        enet_peer_reset (currentPeer);
     }
+
+	enet_basis_clear_nat_punch_nodes(host);
 
     if (host -> compressor.context != NULL && host -> compressor.destroy)
       (* host -> compressor.destroy) (host -> compressor.context);

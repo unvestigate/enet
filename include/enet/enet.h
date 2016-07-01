@@ -338,7 +338,14 @@ typedef enet_uint32 (ENET_CALLBACK * ENetChecksumCallback) (const ENetBuffer * b
 
 /** Callback for intercepting received raw UDP packets. Should return 1 to intercept, 0 to ignore, or -1 to propagate an error. */
 typedef int (ENET_CALLBACK * ENetInterceptCallback) (struct _ENetHost * host, struct _ENetEvent * event);
- 
+
+typedef struct _ENetNatAddressNode
+{
+	ENetAddress					address;
+	struct _ENetNatAddressNode* next;
+	struct _ENetNatAddressNode* prev;
+} ENetNatAddressNode;
+
 /** An ENet host for communicating with peers.
   *
   * No fields should be modified unless otherwise stated.
@@ -393,6 +400,7 @@ typedef struct _ENetHost
    size_t               duplicatePeers;              /**< optional number of allowed peers from duplicate IPs, defaults to ENET_PROTOCOL_MAXIMUM_PEER_ID */
    size_t               maximumPacketSize;           /**< the maximum allowable packet size that may be sent or received on a peer */
    size_t               maximumWaitingData;          /**< the maximum aggregate amount of buffer space a peer may use waiting for packets to be delivered */
+   ENetNatAddressNode*	firstNatAddressNode;
 } ENetHost;
 
 /**
@@ -587,6 +595,15 @@ ENET_API size_t enet_range_coder_compress (void *, const ENetBuffer *, size_t, s
 ENET_API size_t enet_range_coder_decompress (void *, const enet_uint8 *, size_t, enet_uint8 *, size_t);
    
 extern size_t enet_protocol_command_size (enet_uint8);
+
+// Basis specific functions:
+
+ENET_API int enet_basis_send_nat_punch(ENetHost *, const ENetAddress *);
+ENET_API int enet_basis_has_received_punch_from(ENetHost *, const ENetAddress *);
+ENET_API void enet_basis_clear_nat_punch_nodes(ENetHost *);
+extern int enet_basis_detect_nat_punch_through_packet(ENetHost *, size_t);
+
+#define NAT_PUNCH_THROUGH_MESSAGE "BASISFIST"
 
 #ifdef __cplusplus
 }

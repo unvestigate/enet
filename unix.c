@@ -462,6 +462,47 @@ enet_socket_send (ENetSocket socket,
     return sentLength;
 }
 
+// Basis specific function:
+
+ENetBuffer natPunchThroughBuffer[1];
+
+int 
+enet_basis_send_nat_punch(ENetHost * host, const ENetAddress * address)
+{
+	struct msghdr msgHdr;
+	struct sockaddr_in sin;
+	int sentLength;
+
+	memset (& msgHdr, 0, sizeof (struct msghdr));
+
+	memset (& sin, 0, sizeof (struct sockaddr_in));
+
+	sin.sin_family = AF_INET;
+	sin.sin_port = ENET_HOST_TO_NET_16 (address -> port);
+	sin.sin_addr.s_addr = address -> host;
+
+	msgHdr.msg_name = & sin;
+	msgHdr.msg_namelen = sizeof (struct sockaddr_in);
+
+	natPunchThroughBuffer[0].data = NAT_PUNCH_THROUGH_MESSAGE;
+	natPunchThroughBuffer[0].dataLength = strlen(NAT_PUNCH_THROUGH_MESSAGE);
+
+	msgHdr.msg_iov = (struct iovec *) natPunchThroughBuffer;
+	msgHdr.msg_iovlen = 1;
+
+	sentLength = sendmsg (host->socket, & msgHdr, MSG_NOSIGNAL);
+
+	if (sentLength == -1)
+	{
+		if (errno == EWOULDBLOCK)
+			return 0;
+
+		return -1;
+	}
+
+	return sentLength;
+}
+
 int
 enet_socket_receive (ENetSocket socket,
                      ENetAddress * address,
